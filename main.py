@@ -11,7 +11,8 @@ from flask import Flask, Response
 import json
 import time
 import webbrowser
-from threading import Timer
+from threading import Timer, Thread
+import queue
 
 import random
 
@@ -35,6 +36,7 @@ def draw_landmarks_on_image(rgb_image, detection_result):
       solutions.drawing_styles.get_default_pose_landmarks_style())
   return annotated_image
 
+coords_queue = queue.Queue()
 app = Flask(__name__, static_folder='p5', static_url_path='')
 
 
@@ -52,7 +54,7 @@ def event_stream2():
         time.sleep(1/30) # Aim for ~30 FPS
 
 
-def event_stream():
+def run_mediapipe(q):
     base_options = python.BaseOptions(model_asset_path='models/pose_landmarker_heavy.task')
     options = vision.PoseLandmarkerOptions(
         base_options=base_options,
@@ -87,16 +89,24 @@ def event_stream():
         # Display the resulting frame
         cv.imshow('frame', bgr)
 
+        if detection_result.pose_landmarks:
+            # Use nose landmark as the coordinate to stream
+            nose_landmark = detection_result.pose_landmarks[0][0]
+            coords = {"x": nose_landmark.x, "y": nose_landmark.y, "z": nose_landmark.z}
+            q.put(coords)
+
         if cv.waitKey(1) == 27:
             break
         
-        coords = {"x": random.random(), "y": random.random(), "z": random.random()}
-        yield f"data:{json.dumps(coords)}\n\n"
-
-
     # When everything done, release the capture
     cap.release()
     cv.destroyAllWindows()
+
+
+def event_stream():
+    while True:
+        coords = coords_queue.get()
+        yield f"data: {json.dumps(coords)}\n\n"
 
 @app.route('/stream')
 def stream():
@@ -109,5 +119,12 @@ def open_browser():
 
 
 if __name__ == "__main__":
+    # Start Flask in a background thread.
+    # The `daemon=True` flag means the thread will exit when the main thread exits.
+    flask_thread = Thread(target=lambda: app.run(threaded=True), daemon=True)
+    flask_thread.start()
+
     Timer(1, open_browser).start()
-    app.run(threaded=True) # Port defaults to 5000
+    
+    # Run MediaPipe in the main thread, as required by OpenCV's GUI functions.
+    run_mediapipe(coords_queue)
