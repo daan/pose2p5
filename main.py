@@ -9,6 +9,9 @@ import cv2 as cv
 
 from flask import Flask, Response
 import json
+import time
+import webbrowser
+from threading import Timer
 
 import random
 
@@ -32,7 +35,7 @@ def draw_landmarks_on_image(rgb_image, detection_result):
       solutions.drawing_styles.get_default_pose_landmarks_style())
   return annotated_image
 
-app = Flask(__name__)
+app = Flask(__name__, static_folder='p5', static_url_path='')
 
 
 def get_mediapipe_coords():
@@ -101,6 +104,10 @@ def stream():
     return Response(event_stream(), mimetype='text/event-stream')
 
 
+def open_browser():
+    webbrowser.open_new("http://127.0.0.1:5000/")
+
 
 if __name__ == "__main__":
+    Timer(1, open_browser).start()
     app.run(threaded=True) # Port defaults to 5000

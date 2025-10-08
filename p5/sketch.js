@@ -4,7 +4,7 @@ function setup() {
     createCanvas(400, 400, WEBGL);
 
     // Connect to the Python SSE stream using EventSource
-    const eventSource = new EventSource('http://localhost:5000/stream');
+    const eventSource = new EventSource('/stream');
 
     // The 'onmessage' event is fired when data is received
     eventSource.onmessage = function(event) {
