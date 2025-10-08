@@ -16,5 +16,13 @@
 
   <body>
     <script src="sketch.js"></script>
+    <script>
+      const eventSource = new EventSource("/events");
+      eventSource.onmessage = (event) => {
+        if (event.data === 'reload') {
+          window.location.reload();
+        }
+      };
+    </script>
   </body>
 </html>

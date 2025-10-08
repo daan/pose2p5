@@ -11,8 +11,11 @@ from flask import Flask, Response
 import json
 import time
 import webbrowser
-from threading import Timer, Thread
+from threading import Timer, Thread, Lock
 import queue
+
+from watchdog.observers import Observer
+from watchdog.events import FileSystemEventHandler
 
 def draw_landmarks_on_image(rgb_image, detection_result):
   pose_landmarks_list = detection_result.pose_landmarks
@@ -34,8 +37,41 @@ def draw_landmarks_on_image(rgb_image, detection_result):
       solutions.drawing_styles.get_default_pose_landmarks_style())
   return annotated_image
 
+
+# Live reload functionality
+class ChangeHandler(FileSystemEventHandler):
+    def on_modified(self, event):
+        # When a file in the p5 directory is modified, send a reload message
+        # to all connected clients.
+        with listeners_lock:
+            for q in listeners:
+                # Use non-blocking put to avoid waiting if a queue is full
+                try:
+                    q.put_nowait('reload')
+                except queue.Full:
+                    pass
+
+def file_watcher():
+    path = './p5'
+    event_handler = ChangeHandler()
+    observer = Observer()
+    observer.schedule(event_handler, path, recursive=True)
+    observer.start()
+    try:
+        while True:
+            time.sleep(1)
+    except KeyboardInterrupt:
+        observer.stop()
+    observer.join()
+
+
 coords_queue = queue.Queue()
 app = Flask(__name__, static_folder='p5', static_url_path='')
+app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0 # Disable caching for development
+
+# For live reload
+listeners = []
+listeners_lock = Lock()
 
 
 
@@ -103,6 +139,22 @@ def stream():
     return Response(event_stream(), mimetype='text/event-stream')
 
 
+@app.route('/events')
+def events():
+    def gen():
+        q = queue.Queue()
+        with listeners_lock:
+            listeners.append(q)
+        try:
+            while True:
+                msg = q.get()
+                yield f'data: {msg}\n\n'
+        finally:
+            with listeners_lock:
+                listeners.remove(q)
+    return Response(gen(), mimetype='text/event-stream')
+
+
 def open_browser():
     webbrowser.open_new("http://127.0.0.1:5000/index.html")
 
@@ -110,8 +162,12 @@ def open_browser():
 if __name__ == "__main__":
     # Start Flask in a background thread.
     # The `daemon=True` flag means the thread will exit when the main thread exits.
-    flask_thread = Thread(target=lambda: app.run(threaded=True), daemon=True)
+    flask_thread = Thread(target=lambda: app.run(threaded=True, use_reloader=False), daemon=True)
     flask_thread.start()
+
+    # Start the file watcher in another background thread.
+    watcher_thread = Thread(target=file_watcher, daemon=True)
+    watcher_thread.start()
 
     Timer(1, open_browser).start()
     
