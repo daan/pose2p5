@@ -14,8 +14,6 @@ import webbrowser
 from threading import Timer, Thread
 import queue
 
-import random
-
 def draw_landmarks_on_image(rgb_image, detection_result):
   pose_landmarks_list = detection_result.pose_landmarks
   annotated_image = np.copy(rgb_image)
@@ -40,18 +38,6 @@ coords_queue = queue.Queue()
 app = Flask(__name__, static_folder='p5', static_url_path='')
 
 
-def get_mediapipe_coords():
-    # Replace this with your actual MediaPipe logic
-    # For demonstration, we'll return dummy data
-    import random
-    return {"x": random.random(), "y": random.random(), "z": random.random()}
-
-def event_stream2():
-    while True:
-        coords = get_mediapipe_coords()
-        # The data must be formatted as "data: ...\n\n"
-        yield f"data: {json.dumps(coords)}\n\n"
-        time.sleep(1/30) # Aim for ~30 FPS
 
 
 def run_mediapipe(q):
