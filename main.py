@@ -76,10 +76,13 @@ def run_mediapipe(q):
         cv.imshow('frame', bgr)
 
         if detection_result.pose_landmarks:
-            # Use nose landmark as the coordinate to stream
-            nose_landmark = detection_result.pose_landmarks[0][0]
-            coords = {"x": nose_landmark.x, "y": nose_landmark.y, "z": nose_landmark.z}
+            # Send all landmarks
+            landmarks = detection_result.pose_landmarks[0]
+            coords = [{"x": lm.x, "y": lm.y, "z": lm.z} for lm in landmarks]
             q.put(coords)
+        else:
+            # Send empty list if no pose detected
+            q.put([])
 
         if cv.waitKey(1) == 27:
             break
@@ -101,7 +104,7 @@ def stream():
 
 
 def open_browser():
-    webbrowser.open_new("http://127.0.0.1:5000/index.html")
+    webbrowser.open_new("http://127.0.0.1:5000/")
 
 
 if __name__ == "__main__":
