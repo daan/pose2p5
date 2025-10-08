@@ -104,7 +104,7 @@ def stream():
 
 
 def open_browser():
-    webbrowser.open_new("http://127.0.0.1:5000/")
+    webbrowser.open_new("http://127.0.0.1:5000/index.html")
 
 
 if __name__ == "__main__":
