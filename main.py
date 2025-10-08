@@ -44,7 +44,7 @@ def get_mediapipe_coords():
     import random
     return {"x": random.random(), "y": random.random(), "z": random.random()}
 
-def event_stream():
+def event_stream2():
     while True:
         coords = get_mediapipe_coords()
         # The data must be formatted as "data: ...\n\n"
@@ -52,7 +52,7 @@ def event_stream():
         time.sleep(1/30) # Aim for ~30 FPS
 
 
-def event_stream2():
+def event_stream():
     base_options = python.BaseOptions(model_asset_path='models/pose_landmarker_heavy.task')
     options = vision.PoseLandmarkerOptions(
         base_options=base_options,
@@ -105,7 +105,7 @@ def stream():
 
 
 def open_browser():
-    webbrowser.open_new("http://127.0.0.1:5000/")
+    webbrowser.open_new("http://127.0.0.1:5000/index.html")
 
 
 if __name__ == "__main__":
