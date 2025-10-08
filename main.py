@@ -7,6 +7,10 @@ from mediapipe.framework.formats import landmark_pb2
 import numpy as np
 import cv2 as cv
 
+from flask import Flask, Response
+import json
+
+import random
 
 def draw_landmarks_on_image(rgb_image, detection_result):
   pose_landmarks_list = detection_result.pose_landmarks
@@ -28,9 +32,24 @@ def draw_landmarks_on_image(rgb_image, detection_result):
       solutions.drawing_styles.get_default_pose_landmarks_style())
   return annotated_image
 
+app = Flask(__name__)
 
 
-def main():
+def get_mediapipe_coords():
+    # Replace this with your actual MediaPipe logic
+    # For demonstration, we'll return dummy data
+    import random
+    return {"x": random.random(), "y": random.random(), "z": random.random()}
+
+def event_stream():
+    while True:
+        coords = get_mediapipe_coords()
+        # The data must be formatted as "data: ...\n\n"
+        yield f"data: {json.dumps(coords)}\n\n"
+        time.sleep(1/30) # Aim for ~30 FPS
+
+
+def event_stream2():
     base_options = python.BaseOptions(model_asset_path='models/pose_landmarker_heavy.task')
     options = vision.PoseLandmarkerOptions(
         base_options=base_options,
@@ -67,10 +86,21 @@ def main():
 
         if cv.waitKey(1) == 27:
             break
-    
+        
+        coords = {"x": random.random(), "y": random.random(), "z": random.random()}
+        yield f"data:{json.dumps(coords)}\n\n"
+
+
     # When everything done, release the capture
     cap.release()
     cv.destroyAllWindows()
 
+@app.route('/stream')
+def stream():
+    # The mimetype 'text/event-stream' is crucial
+    return Response(event_stream(), mimetype='text/event-stream')
+
+
+
 if __name__ == "__main__":
-    main()
+    app.run(threaded=True) # Port defaults to 5000
